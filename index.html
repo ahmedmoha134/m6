@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>🏎️ سباق حرف ف</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Tahoma', sans-serif; }
+  body {
+    background: linear-gradient(180deg, #87CEEB 0%, #98D8E8 60%, #7CB342 60%, #558B2F 100%);
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+  h1 {
+    text-align: center;
+    color: #fff;
+    text-shadow: 3px 3px 0 #E91E63;
+    font-size: 2.2em;
+    padding: 15px;
+    background: rgba(0,0,0,0.2);
+  }
+  .score {
+    text-align: center;
+    color: #fff;
+    font-size: 1.3em;
+    margin: 5px;
+    background: rgba(0,0,0,0.25);
+    padding: 8px;
+    border-radius: 10px;
+    display: inline-block;
+    margin: 0 auto;
+  }
+  .road {
+    position: relative;
+    width: 95%;
+    max-width: 1100px;
+    height: 200px;
+    margin: 30px auto;
+    background: #424242;
+    border: 8px solid #616161;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+  .road::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    height: 6px;
+    background: repeating-linear-gradient(90deg, #FFEB3B 0 30px, transparent 30px 60px);
+    transform: translateY(-50%);
+  }
+  .station {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: #fff;
+    border: 5px solid #FF5722;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.8em;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+  .station:hover { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 8px 25px rgba(255,87,34,0.6); }
+  .station.correct { background: #4CAF50; color: #fff; border-color: #2E7D32; animation: bounce 0.6s; }
+  .station.wrong { background: #FFCDD2; animation: shake 0.5s; }
+
+  .car {
+    position: absolute;
+    bottom: -55px;
+    font-size: 3.5em;
+    transition: left 1s ease-in-out;
+    z-index: 10;
+    filter: drop-shadow(0 5px 5px rgba(0,0,0,0.4));
+  }
+  .car.move { animation: vroom 0.3s infinite; }
+
+  @keyframes vroom {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes bounce {
+    0%,100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.3); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translate(-50%, -50%); }
+    25% { transform: translate(-60%, -50%); }
+    75% { transform: translate(-40%, -50%); }
+  }
+
+  .controls {
+    text-align: center;
+    margin: 20px;
+  }
+  button {
+    background: #E91E63;
+    color: #fff;
+    border: none;
+    padding: 12px 25px;
+    font-size: 1.2em;
+    border-radius: 30px;
+    cursor: pointer;
+    margin: 5px;
+    box-shadow: 0 4px 0 #AD1457;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  button:hover { background: #F06292; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #AD1457; }
+
+  .message {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: #fff;
+    padding: 30px 50px;
+    border-radius: 20px;
+    font-size: 2em;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    z-index: 100;
+    transition: transform 0.4s;
+  }
+  .message.show { transform: translate(-50%, -50%) scale(1); }
+  .message.win { background: linear-gradient(135deg, #FFEB3B, #FF9800); }
+  .message.lose { background: linear-gradient(135deg, #FFCDD2, #EF9A9A); }
+
+  .confetti {
+    position: fixed;
+    width: 10px; height: 10px;
+    top: -10px;
+    z-index: 99;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(720deg); }
+  }
+
+  .sun {
+    position: absolute;
+    top: 20px; left: 30px;
+    font-size: 4em;
+    animation: spin 20s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .cloud {
+    position: absolute;
+    top: 30px;
+    font-size: 3em;
+    animation: drift 30s linear infinite;
+  }
+  @keyframes drift {
+    from { transform: translateX(100vw); }
+    to { transform: translateX(-200px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="sun">☀️</div>
+<div class="cloud" style="left: 30%;">☁️</div>
+<div class="cloud" style="left: 60%; animation-delay: -15s;">☁️</div>
+
+<h1>🏎️ سباق السيارات إلى حرف ف 🏁</h1>
+<div style="text-align:center"><div class="score">النقاط: <span id="score">0</span> 🌟</div></div>
+
+<div class="road" id="road">
+  <div class="car" id="car" style="left: 5%;">🚗</div>
+</div>
+
+<div class="controls">
+  <button onclick="speakLetter()">🔊 اسمع حرف ف</button>
+  <button onclick="restart()">🔄 جولة جديدة</button>
+</div>
+
+<div class="message" id="msg"></div>
+
+<script>
+  const letters = ['ب','ت','ف','س','ن','ك','ل','ع'];
+  let stations = [];
+  let score = 0;
+  let locked = false;
+
+  function shuffle(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+  }
+
+  function buildRoad() {
+    const road = document.getElementById('road');
+    // إزالة المحطات القديمة
+    road.querySelectorAll('.station').forEach(s => s.remove());
+    stations = [];
+
+    // اختيار 6 حروف عشوائية مع ضمان وجود ف
+    let chosen = shuffle(letters).slice(0, 6);
+    if (!chosen.includes('ف')) chosen[Math.floor(Math.random()*6)] = 'ف';
+    chosen = shuffle(chosen);
+
+    chosen.forEach((letter, i) => {
+      const s = document.createElement('div');
+      s.className = 'station';
+      s.textContent = letter;
+      s.style.left = (15 + i * 14) + '%';
+      s.onclick = () => driveTo(s, letter);
+      road.appendChild(s);
+      stations.push({el: s, letter: letter, pos: 15 + i * 14});
+    });
+
+    // إعادة السيارة للبداية
+    document.getElementById('car').style.left = '5%';
+  }
+
+  function driveTo(stationEl, letter) {
+    if (locked) return;
+    locked = true;
+
+    const car = document.getElementById('car');
+    car.classList.add('move');
+    car.style.left = stationEl.style.left;
+
+    // نطق الحرف عند الوصول
+    setTimeout(() => {
+      speak(letter);
+      car.classList.remove('move');
+
+      setTimeout(() => {
+        if (letter === 'ف') {
+          stationEl.classList.add('correct');
+          score += 10;
+          document.getElementById('score').textContent = score;
+          showMessage('🎉 أحسنت! وصلت لحرف ف 🏆', 'win');
+          confetti();
+          speak('ممتاز! هذا هو حرف فاء');
+          setTimeout(restart, 3500);
+        } else {
+          stationEl.classList.add('wrong');
+          showMessage('🤔 هذا حرف ' + letter + '، ابحث عن ف', 'lose');
+          speak('هذا حرف ' + letter + '، حاول مرة أخرى');
+          setTimeout(() => {
+            stationEl.classList.remove('wrong');
+            document.getElementById('car').style.left = '5%';
+            locked = false;
+          }, 2000);
+          return;
+        }
+        locked = false;
+      }, 1200);
+    }, 1100);
+  }
+
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ar-SA';
+      u.rate = 0.85;
+      u.pitch = 1.2;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }
+  }
+
+  function speakLetter() {
+    speak('فاء');
+  }
+
+  function showMessage(text, type) {
+    const m = document.getElementById('msg');
+    m.textContent = text;
+    m.className = 'message show ' + type;
+    setTimeout(() => m.classList.remove('show'), 2800);
+  }
+
+  function confetti() {
+    const colors = ['#E91E63','#FFEB3B','#4CAF50','#2196F3','#FF5722','#9C27B0'];
+    for (let i = 0; i < 60; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      c.style.animationDelay = Math.random() * 0.5 + 's';
+      c.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 3500);
+    }
+  }
+
+  function restart() {
+    locked = false;
+    buildRoad();
+  }
+
+  // بدء اللعبة
+  buildRoad();
+  setTimeout(() => speak('ابحث عن حرف فاء'), 800);
+</script>
+
+</body>
+</html>
