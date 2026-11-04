@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>🏎️ سباق حرف ف</title>
+<title>🏎️ سباق حرف ف - بأصوات تفاعلية</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Tahoma', sans-serif; }
   body {
@@ -28,7 +28,6 @@
     padding: 8px;
     border-radius: 10px;
     display: inline-block;
-    margin: 0 auto;
   }
   .road {
     position: relative;
@@ -116,6 +115,8 @@
   }
   button:hover { background: #F06292; }
   button:active { transform: translateY(3px); box-shadow: 0 1px 0 #AD1457; }
+  button.mute { background: #607D8B; box-shadow: 0 4px 0 #37474F; }
+  button.mute:hover { background: #78909C; }
 
   .message {
     position: fixed;
@@ -181,11 +182,157 @@
 <div class="controls">
   <button onclick="speakLetter()">🔊 اسمع حرف ف</button>
   <button onclick="restart()">🔄 جولة جديدة</button>
+  <button id="muteBtn" class="mute" onclick="toggleMute()">🔇 تفعيل الصوت</button>
 </div>
 
 <div class="message" id="msg"></div>
 
 <script>
+  // ============ نظام الأصوات التفاعلي ============
+  let audioCtx = null;
+  let muted = true; // الصوت مغلق افتراضياً (المتصفحات تمنع الصوت التلقائي)
+  let engineOsc = null;
+  let engineGain = null;
+
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  // نغمة بسيطة (beep)
+  function playTone(freq, duration, type = 'sine', volume = 0.3) {
+    if (muted || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  // صوت محرك السيارة (أثناء الحركة)
+  function startEngine() {
+    if (muted || !audioCtx) return;
+    engineOsc = audioCtx.createOscillator();
+    engineGain = audioCtx.createGain();
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 80;
+    engineGain.gain.value = 0.08;
+    engineOsc.connect(engineGain);
+    engineGain.connect(audioCtx.destination);
+    engineOsc.start();
+
+    // اهتزاز المحرك
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.frequency.value = 15;
+    lfoGain.gain.value = 20;
+    lfo.connect(lfoGain);
+    lfoGain.connect(engineOsc.frequency);
+    lfo.start();
+    engineOsc._lfo = lfo;
+  }
+
+  function stopEngine() {
+    if (engineOsc) {
+      try {
+        engineOsc._lfo.stop();
+        engineOsc.stop();
+      } catch(e) {}
+      engineOsc = null;
+    }
+  }
+
+  // صوت نقر على المحطة
+  function playClick() {
+    playTone(600, 0.1, 'square', 0.2);
+    setTimeout(() => playTone(800, 0.08, 'square', 0.15), 50);
+  }
+
+  // صوت نجاح (نغمة صاعدة)
+  function playSuccess() {
+    if (muted || !audioCtx) return;
+    const notes = [523, 659, 784, 1047]; // C, E, G, C
+    notes.forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.25, 'triangle', 0.3), i * 120);
+    });
+  }
+
+  // صوت خطأ (نغمة هابطة)
+  function playError() {
+    if (muted || !audioCtx) return;
+    playTone(300, 0.2, 'sawtooth', 0.25);
+    setTimeout(() => playTone(200, 0.3, 'sawtooth', 0.25), 150);
+  }
+
+  // صوت تصفيق (فوز)
+  function playApplause() {
+    if (muted || !audioCtx) return;
+    for (let i = 0; i < 25; i++) {
+      setTimeout(() => {
+        const noise = audioCtx.createBufferSource();
+        const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * 0.3;
+        noise.buffer = buffer;
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.15;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.value = 2000;
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+        noise.start();
+      }, i * 80 + Math.random() * 50);
+    }
+  }
+
+  // صوت بداية السباق
+  function playRaceStart() {
+    if (muted || !audioCtx) return;
+    playTone(440, 0.15, 'square', 0.2);
+    setTimeout(() => playTone(440, 0.15, 'square', 0.2), 250);
+    setTimeout(() => playTone(880, 0.4, 'square', 0.3), 500);
+  }
+
+  // نطق صوتي
+  function speak(text) {
+    if (muted) return;
+    if ('speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ar-SA';
+      u.rate = 0.85;
+      u.pitch = 1.2;
+      u.volume = 1;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }
+  }
+
+  function toggleMute() {
+    initAudio();
+    muted = !muted;
+    const btn = document.getElementById('muteBtn');
+    if (muted) {
+      btn.textContent = '🔇 تفعيل الصوت';
+      btn.classList.add('mute');
+    } else {
+      btn.textContent = '🔊 كتم الصوت';
+      btn.classList.remove('mute');
+      // عند التفعيل نشغّل صوت ترحيب
+      playSuccess();
+      setTimeout(() => speak('مرحباً! ابحث عن حرف فاء'), 400);
+    }
+  }
+
+  // ============ منطق اللعبة ============
   const letters = ['ب','ت','ف','س','ن','ك','ل','ع'];
   let stations = [];
   let score = 0;
@@ -197,11 +344,9 @@
 
   function buildRoad() {
     const road = document.getElementById('road');
-    // إزالة المحطات القديمة
     road.querySelectorAll('.station').forEach(s => s.remove());
     stations = [];
 
-    // اختيار 6 حروف عشوائية مع ضمان وجود ف
     let chosen = shuffle(letters).slice(0, 6);
     if (!chosen.includes('ف')) chosen[Math.floor(Math.random()*6)] = 'ف';
     chosen = shuffle(chosen);
@@ -216,7 +361,6 @@
       stations.push({el: s, letter: letter, pos: 15 + i * 14});
     });
 
-    // إعادة السيارة للبداية
     document.getElementById('car').style.left = '5%';
   }
 
@@ -224,26 +368,38 @@
     if (locked) return;
     locked = true;
 
+    initAudio();
+    playClick();
+
     const car = document.getElementById('car');
     car.classList.add('move');
     car.style.left = stationEl.style.left;
 
-    // نطق الحرف عند الوصول
+    // تشغيل صوت المحرك
+    startEngine();
+
     setTimeout(() => {
-      speak(letter);
+      stopEngine();
       car.classList.remove('move');
+
+      // نطق الحرف عند الوصول
+      speak(letter);
 
       setTimeout(() => {
         if (letter === 'ف') {
           stationEl.classList.add('correct');
           score += 10;
           document.getElementById('score').textContent = score;
-          showMessage('🎉 أحسنت! وصلت لحرف ف 🏆', 'win');
-          confetti();
-          speak('ممتاز! هذا هو حرف فاء');
-          setTimeout(restart, 3500);
+          playSuccess();
+          setTimeout(() => {
+            playApplause();
+            showMessage('🎉 أحسنت! وصلت لحرف ف 🏆', 'win');
+            speak('ممتاز! هذا هو حرف فاء');
+          }, 500);
+          setTimeout(restart, 4000);
         } else {
           stationEl.classList.add('wrong');
+          playError();
           showMessage('🤔 هذا حرف ' + letter + '، ابحث عن ف', 'lose');
           speak('هذا حرف ' + letter + '، حاول مرة أخرى');
           setTimeout(() => {
@@ -258,26 +414,17 @@
     }, 1100);
   }
 
-  function speak(text) {
-    if ('speechSynthesis' in window) {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      u.rate = 0.85;
-      u.pitch = 1.2;
-      speechSynthesis.cancel();
-      speechSynthesis.speak(u);
-    }
-  }
-
   function speakLetter() {
-    speak('فاء');
+    initAudio();
+    playTone(700, 0.15, 'triangle', 0.2);
+    setTimeout(() => speak('فاء'), 200);
   }
 
   function showMessage(text, type) {
     const m = document.getElementById('msg');
     m.textContent = text;
     m.className = 'message show ' + type;
-    setTimeout(() => m.classList.remove('show'), 2800);
+    setTimeout(() => m.classList.remove('show'), 3200);
   }
 
   function confetti() {
@@ -296,12 +443,18 @@
 
   function restart() {
     locked = false;
+    stopEngine();
     buildRoad();
+    if (!muted) {
+      setTimeout(() => {
+        playRaceStart();
+        setTimeout(() => speak('ابحث عن حرف فاء'), 700);
+      }, 300);
+    }
   }
 
   // بدء اللعبة
   buildRoad();
-  setTimeout(() => speak('ابحث عن حرف فاء'), 800);
 </script>
 
 </body>
